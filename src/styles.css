@@ -1,0 +1,29 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #181818;
+  color: #cccccc;
+}
+
+button {
+  font-family: inherit;
+}
+
+/*
+ * Make sure the VSCode-rendered parts stretch to fill our grid cells.
+ */
+.monaco-workbench {
+  height: 100%;
+}
+
+.monaco-workbench .part {
+  position: relative !important;
+}
+
+#root,
+#root > div {
+  overflow: hidden;
+}
