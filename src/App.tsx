@@ -3,10 +3,12 @@ import { useRef, useState } from "react";
 import { DanceEditor, type DanceEditorHandle } from "./components/DanceEditor";
 import { UploadKeybindings } from "./components/UploadKeybindings";
 import { SAMPLE_KEYBINDINGS_RAW } from "./setup/keybindings";
+import { TrainerPanel } from "./trainer/panel";
 
 export default function App() {
   const editorRef = useRef<DanceEditorHandle>(null);
   const [ready, setReady] = useState(false);
+  const [trainerVisible, setTrainerVisible] = useState(true);
 
   return (
     <div
@@ -29,27 +31,28 @@ export default function App() {
         }}
       >
         <h1 style={{ fontSize: 16, margin: 0, fontWeight: 600 }}>
-          Dance · monaco-vscode-api
+          Dance · trainer
         </h1>
         <span style={{ color: "#8c8c8c", fontSize: 12 }}>
-          Modal editing on Monaco. Activity bar → "Dance" pane shows registers + mode.
+          Real Dance + Monaco. Lessons sourced from{" "}
+          <a
+            href="https://github.com/igor-ramazanov/dance-training"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "#4fc1ff" }}
+          >
+            dance-training
+          </a>
+          . Upload your own keybindings.json — every key chip below renders the binding{" "}
+          <em>you</em> use.
         </span>
-        <a
-          href="https://github.com/71/dance"
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: "#4fc1ff", fontSize: 12 }}
+        <button
+          type="button"
+          onClick={() => setTrainerVisible((v) => !v)}
+          style={toggleBtnStyle}
         >
-          dance docs
-        </a>
-        <a
-          href="https://github.com/CodinGame/monaco-vscode-api"
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: "#4fc1ff", fontSize: 12 }}
-        >
-          monaco-vscode-api
-        </a>
+          {trainerVisible ? "Hide trainer" : "Show trainer"}
+        </button>
       </header>
 
       <div style={{ padding: "8px 16px", borderBottom: "1px solid #2d2d2d" }}>
@@ -67,13 +70,30 @@ export default function App() {
         />
       </div>
 
-      <main style={{ minHeight: 0, position: "relative" }}>
-        <DanceEditor
-          ref={editorRef}
-          onReady={() => setReady(true)}
-        />
-        {ready ? null : null}
+      <main
+        style={{
+          minHeight: 0,
+          position: "relative",
+          display: "grid",
+          gridTemplateColumns: trainerVisible ? "minmax(0, 1fr) 480px" : "minmax(0, 1fr)",
+        }}
+      >
+        <div style={{ minWidth: 0, position: "relative" }}>
+          <DanceEditor ref={editorRef} onReady={() => setReady(true)} />
+        </div>
+        {trainerVisible && <TrainerPanel ready={ready} />}
       </main>
     </div>
   );
 }
+
+const toggleBtnStyle: React.CSSProperties = {
+  marginLeft: "auto",
+  background: "#0e639c",
+  color: "white",
+  border: "1px solid #1177bb",
+  padding: "4px 10px",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 12,
+};

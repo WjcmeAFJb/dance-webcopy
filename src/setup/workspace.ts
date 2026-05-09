@@ -99,6 +99,14 @@ export async function registerWorkspace(): Promise<void> {
       JSONC_SETTINGS_SAMPLE,
     ),
   );
+  // Pre-allocate the trainer's lesson buffer so VSCode's file service can
+  // resolve the URI when the lesson runtime swaps the active editor onto it.
+  provider.registerFile(
+    new RegisteredMemoryFile(
+      monaco.Uri.file(`${WORKSPACE_FOLDER}/.lesson.txt`),
+      "",
+    ),
+  );
   provider.registerFile(
     new RegisteredMemoryFile(
       WORKSPACE_FILE,

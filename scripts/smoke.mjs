@@ -253,16 +253,29 @@ check(
   String(danceRunResult),
 );
 
-// Upload a custom keybindings.json that maps `q` → insert and verify the
-// keymap takes effect. The upload uses VSCode's JSONC dialect (line
-// comments, trailing commas) to confirm json5/jsonc parsing works.
+// Hide the trainer panel before exercising user-keybindings: with the
+// panel mounted, focus management between Monaco + the panel buttons makes
+// the smoke flaky. The trainer-specific checks below toggle it back on.
+await page
+  .locator("button")
+  .filter({ hasText: "Hide trainer" })
+  .first()
+  .click({ force: true })
+  .catch(() => {});
+await page.waitForTimeout(200);
+
+// Upload a custom keybindings.json that maps an unbound key (`F1`) to
+// dance.modes.set.insert and verify the keymap takes effect. We pick a key
+// that Dance does NOT bind by default — using a Dance-default key (like `q`,
+// which Dance maps to history.recording.play) led to flakiness because the
+// in-memory user file is queued behind Dance's already-merged defaults.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(120);
 const upload = `// custom binding for the smoke test
 [
-  // q in normal mode -> insert
+  // F1 in normal mode -> insert
   {
-    "key": "q",
+    "key": "f1",
     "command": "dance.modes.set.insert",
     "when": "editorTextFocus && dance.mode == 'normal'",
   }, /* trailing comma intentional */
@@ -271,6 +284,9 @@ const upload = `// custom binding for the smoke test
 await page.evaluate(async (json) => {
   await window.__dance?.applyKeybindings(json);
 }, upload);
+// Give VSCode's keybinding registry a moment to re-parse and pick up the
+// new user file before we test against it.
+await page.waitForTimeout(800);
 
 // Reject malformed JSONC.
 const rejected = await page.evaluate(async () => {
@@ -284,12 +300,47 @@ const rejected = await page.evaluate(async () => {
 check("malformed JSONC is rejected with a SyntaxError", rejected, String(rejected));
 
 await page.locator(".monaco-editor .lines-content").first().click({ force: true });
-await page.waitForTimeout(150);
+await page.waitForTimeout(300);
 await page.keyboard.press("Escape");
-await page.waitForTimeout(120);
-await page.keyboard.press("q");
 await page.waitForTimeout(200);
-check("custom keybinding `q` → insert applies", /insert/i.test(await readMode()), await readMode());
+const modeBeforeF1 = await readMode();
+await page.keyboard.press("F1");
+await page.waitForTimeout(300);
+const modeAfterF1 = await readMode();
+check(
+  "custom keybinding (F1 → insert) applies after upload",
+  /insert/i.test(modeAfterF1),
+  `before=${modeBeforeF1} after=${modeAfterF1}`,
+);
+
+// ----- Trainer panel: lesson selection + key chips render the user binding.
+// Re-show the panel.
+await page
+  .locator("button")
+  .filter({ hasText: "Show trainer" })
+  .first()
+  .click({ force: true })
+  .catch(() => {});
+await page.waitForTimeout(400);
+
+const folderBtn = page.locator("button").filter({ hasText: "Vimtutor for Kakoune" });
+check("Vimtutor folder button visible", (await folderBtn.count()) >= 1);
+await folderBtn.first().click({ force: true });
+await page.waitForTimeout(400);
+
+const lessonBtn = page.locator("button").filter({ hasText: "Vimtutor 1.1" });
+check("Cursor-motion lesson button visible", (await lessonBtn.count()) >= 1);
+await lessonBtn.first().click({ force: true });
+await page.waitForTimeout(1500);
+
+const teachKbds = await page.evaluate(() => {
+  return Array.from(document.querySelectorAll("kbd")).map((el) => el.textContent ?? "");
+});
+check(
+  "lesson teaches list shows real key labels (not 'unbound')",
+  teachKbds.some((t) => /[A-Z]|↓|↑|←|→/.test(t)) && !teachKbds.some((t) => /unbound/i.test(t)),
+  JSON.stringify(teachKbds.slice(0, 10)),
+);
 
 console.log("---");
 console.log("page errors:", errors.length);

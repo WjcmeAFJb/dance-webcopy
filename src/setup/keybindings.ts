@@ -18,6 +18,7 @@ import {
 } from "jsonc-parser";
 
 import defaultKeybindings from "../../samples/keybindings.json?raw";
+import { setUserKeybindings } from "../trainer/keymap";
 
 const DEFAULT_CONFIGURATION = JSON.stringify(
   {
@@ -56,6 +57,7 @@ export async function seedUserKeybindings(json: string = EMPTY_KEYBINDINGS): Pro
     initUserConfiguration(DEFAULT_CONFIGURATION),
     initUserKeybindings(json),
   ]);
+  setUserKeybindings(json);
 }
 
 /**
@@ -89,6 +91,7 @@ export async function applyKeybindings(jsonc: string): Promise<unknown[]> {
   // own JSONC parser, and preserving comments/trailing commas means the user
   // sees the same text they uploaded if they later open keybindings.json.
   await updateUserKeybindings(jsonc);
+  setUserKeybindings(jsonc);
   return parsed;
 }
 
