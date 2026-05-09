@@ -18,6 +18,12 @@ import { createModeView } from "../companion/mode-view";
 // resolve in the companion before we ask for its exported API.
 import { whenReady as danceWhenReady } from "../../extensions/dance.vsix";
 
+// jumpy2 (https://github.com/DavidLGoldberg/jumpy2) is the "jump-anywhere"
+// extension that several dance-training keybindings hand off to via
+// `jumpy2.<key>` commands. We bundle the upstream web build so those
+// bindings actually work in the browser.
+import { whenReady as jumpy2WhenReady } from "../../extensions/jumpy2.vsix";
+
 let companionDisposer: (() => void) | undefined;
 
 export async function registerDanceCompanion(): Promise<void> {
@@ -25,7 +31,7 @@ export async function registerDanceCompanion(): Promise<void> {
     return;
   }
 
-  await danceWhenReady;
+  await Promise.all([danceWhenReady, jumpy2WhenReady]);
 
   const result = registerExtension(companionManifest, ExtensionHostKind.LocalProcess);
   const api = await result.getApi();

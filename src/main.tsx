@@ -15,6 +15,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { applyKeybindings } from "./setup/keybindings";
+import { debugLookup } from "./trainer/keymap";
 
 // Expose monaco for the smoke test and DevTools tinkering.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +38,8 @@ createRoot(root).render(
 declare global {
   interface Window {
     __dance?: {
+      /** Debug: returns the trainer's view of bindings for a given command. */
+      debugLookup?: (command: string) => unknown;
       applyKeybindings(json: string): Promise<unknown>;
       readSelections(): Array<{
         startLine: number;
@@ -59,6 +62,7 @@ declare global {
 }
 
 (window as Window).__dance = {
+  debugLookup,
   applyKeybindings,
   readSelections() {
     // monaco-editor (re-exported by monaco-vscode-api) keeps a registry of

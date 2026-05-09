@@ -162,7 +162,7 @@ function LessonRunner({ lesson }: { lesson: Lesson }) {
           <div style={teachesRowStyle}>
             <span style={teachesLabelStyle}>Teaches:</span>
             {lesson.teaches.slice(0, 6).map((cmd) => (
-              <KeyChip key={cmd} command={normalizeCmd(cmd)} />
+              <KeyChip key={cmd} command={cmd} />
             ))}
           </div>
         )}
@@ -213,18 +213,6 @@ function LessonRunner({ lesson }: { lesson: Lesson }) {
       </div>
     </section>
   );
-}
-
-// Some lesson `teaches` entries use the canonical `kak.normal.…` namespace
-// rather than the `dance.…` command id our editor recognizes. The KeyChip
-// only ever looks up dance.* commands, so map the obvious cases or fall
-// through to the original string for the "unbound" badge.
-function normalizeCmd(s: string): string {
-  if (s.startsWith("kak.normal.select.")) {
-    const dir = s.split(".").slice(-1)[0];
-    return `dance.select.${dir}.jump`;
-  }
-  return s;
 }
 
 /* ------------------------------------------------------------------ */

@@ -38,6 +38,11 @@ const DEFAULT_CONFIGURATION = JSON.stringify(
       "tsconfig*.json": "jsonc",
       "jsconfig*.json": "jsonc",
     },
+    // Block cursor in normal mode by default — VSCode's bare line caret
+    // for the unmoded base feels wrong with modal editing. Dance's
+    // per-mode `cursorStyle` overrides take effect on top of this for
+    // insert mode (line) and the rest.
+    "editor.cursorStyle": "block",
     // Ensure Dance is enabled out of the gate.
     "dance.enabled": true,
   },

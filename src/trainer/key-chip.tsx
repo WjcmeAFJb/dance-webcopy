@@ -2,7 +2,13 @@
 // narration via the `{{key:command-id}}` token, and by the trainer panel
 // header to list teaches/required commands.
 
-import { lookupKeyFor, chordLabels, type ResolvedBinding } from "./keymap";
+import {
+  chordLabels,
+  lookupKeyFor,
+  resolveCommand,
+  type KeyChord as KeyChordModel,
+  type ResolvedBinding,
+} from "./keymap";
 
 export type KeyChipProps =
   | { command: string; literalKey?: undefined; className?: string }
@@ -10,13 +16,25 @@ export type KeyChipProps =
 
 export function KeyChip(props: KeyChipProps) {
   if (props.literalKey != null) {
-    return <KeyChord chord={{ modifiers: [], key: props.literalKey }} />;
+    return (
+      <KeyChord
+        chord={{ modifiers: [], key: { kind: "char", char: props.literalKey } }}
+      />
+    );
   }
-  const command = props.command!;
+  const requested = props.command!;
+  const command = resolveCommand(requested);
   const binding = lookupKeyFor(command);
   if (!binding) {
     return (
-      <span style={chipUnknownStyle} title={`No keybinding for ${command}`}>
+      <span
+        style={chipUnknownStyle}
+        title={
+          requested === command
+            ? `No keybinding for ${command}`
+            : `No keybinding for ${command} (resolved from ${requested})`
+        }
+      >
         unbound
         <code style={{ opacity: 0.6, marginLeft: 4 }}>{command}</code>
       </span>
@@ -26,10 +44,19 @@ export function KeyChip(props: KeyChipProps) {
 }
 
 function Sequence({ binding }: { binding: ResolvedBinding }) {
+  const tooltip = [
+    binding.command === "dance.run"
+      ? `dance.run → ${binding.dispatchedCommands.filter((c) => c !== "dance.run").join(", ") || "?"}`
+      : binding.command,
+    binding.when ? `when: ${binding.when}` : undefined,
+    binding.raw ? `raw: ${binding.raw}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
   return (
     <span
       style={{ display: "inline-flex", gap: 4, alignItems: "center" }}
-      title={`${binding.command}${binding.when ? `   when: ${binding.when}` : ""}`}
+      title={tooltip}
     >
       {binding.sequence.map((chord, i) => (
         <span key={i} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
@@ -40,8 +67,8 @@ function Sequence({ binding }: { binding: ResolvedBinding }) {
   );
 }
 
-function KeyChord({ chord }: { chord: { modifiers: readonly string[]; key: string } }) {
-  const labels = chordLabels(chord as never);
+function KeyChord({ chord }: { chord: KeyChordModel }) {
+  const labels = chordLabels(chord);
   return (
     <span style={chordWrapStyle}>
       {labels.map((label, i) => (
