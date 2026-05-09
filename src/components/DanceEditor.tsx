@@ -131,7 +131,9 @@ export const DanceEditor = forwardRef<DanceEditorHandle, DanceEditorProps>(funct
         `,
         background: "#1e1e1e",
         color: "#cccccc",
-        fontFamily: "system-ui, sans-serif",
+        // Inherit body's font-family — VSCode parts have their own font
+        // rules, and forcing one here can leak into widgets that fall back
+        // to inherit.
         height: "100%",
         minHeight: 0,
         position: "relative",

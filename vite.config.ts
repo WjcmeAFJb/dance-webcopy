@@ -71,6 +71,7 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 5173,
     host: "0.0.0.0",
+    allowedHosts: [".code.internal.local"]
   },
   resolve: {
     dedupe: ["vscode", "monaco-editor"],

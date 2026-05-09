@@ -11,6 +11,11 @@ import {
   updateUserKeybindings,
 } from "@codingame/monaco-vscode-keybindings-service-override";
 import { initUserConfiguration } from "@codingame/monaco-vscode-configuration-service-override";
+import {
+  parse as parseJsonc,
+  printParseErrorCode,
+  type ParseError,
+} from "jsonc-parser";
 
 import defaultKeybindings from "../../samples/keybindings.json?raw";
 
@@ -22,6 +27,16 @@ const DEFAULT_CONFIGURATION = JSON.stringify(
     "editor.renderWhitespace": "selection",
     "workbench.colorTheme": "Default Dark Modern",
     "files.autoSave": "off",
+    // Match VSCode's built-in associations so settings/keybindings/.vscode
+    // files open as JSON-with-comments rather than strict JSON.
+    "files.associations": {
+      "**/.vscode/*.json": "jsonc",
+      "**/User/settings.json": "jsonc",
+      "**/User/keybindings.json": "jsonc",
+      "*.code-workspace": "jsonc",
+      "tsconfig*.json": "jsonc",
+      "jsconfig*.json": "jsonc",
+    },
     // Ensure Dance is enabled out of the gate.
     "dance.enabled": true,
   },
@@ -44,16 +59,49 @@ export async function seedUserKeybindings(json: string = EMPTY_KEYBINDINGS): Pro
 }
 
 /**
- * Validate a JSON keybindings document and replace the active keybindings.
+ * Validate a keybindings document (JSON-with-comments, like VSCode) and
+ * replace the active keybindings.
  *
- * Returns the parsed array on success. Throws SyntaxError on invalid JSON or
+ * Accepts the same JSONC dialect as VSCode's own settings/keybindings editors:
+ * `// line comments`, `/* block comments * /`, and trailing commas.
+ *
+ * Returns the parsed array on success. Throws SyntaxError on invalid JSONC or
  * a TypeError if the root element is not an array.
  */
-export async function applyKeybindings(json: string): Promise<unknown[]> {
-  const parsed = JSON.parse(json);
+export async function applyKeybindings(jsonc: string): Promise<unknown[]> {
+  const errors: ParseError[] = [];
+  const parsed = parseJsonc(jsonc, errors, {
+    allowTrailingComma: true,
+    allowEmptyContent: false,
+    disallowComments: false,
+  });
+  if (errors.length > 0) {
+    const first = errors[0];
+    const lineInfo = locateOffset(jsonc, first.offset);
+    throw new SyntaxError(
+      `${printParseErrorCode(first.error)} at line ${lineInfo.line}, column ${lineInfo.column}`,
+    );
+  }
   if (!Array.isArray(parsed)) {
     throw new TypeError("keybindings.json must be a JSON array of binding objects");
   }
-  await updateUserKeybindings(json);
+  // Hand the original JSONC text to VSCode — its keybinding registry has its
+  // own JSONC parser, and preserving comments/trailing commas means the user
+  // sees the same text they uploaded if they later open keybindings.json.
+  await updateUserKeybindings(jsonc);
   return parsed;
+}
+
+function locateOffset(text: string, offset: number): { line: number; column: number } {
+  let line = 1;
+  let column = 1;
+  for (let i = 0; i < offset && i < text.length; i++) {
+    if (text.charCodeAt(i) === 10 /* \n */) {
+      line++;
+      column = 1;
+    } else {
+      column++;
+    }
+  }
+  return { line, column };
 }

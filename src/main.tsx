@@ -5,6 +5,11 @@ import "./styles.css";
 // monaco-vscode-api module load doesn't run before our worker registry.
 import "./setup/workers";
 
+// VSCode default extensions: register at module load time so their language
+// contributions (json, jsonc, themes) are in the registry before the
+// workbench scans it.
+import "./setup/default-extensions";
+
 import * as monaco from "monaco-editor";
 import { createRoot } from "react-dom/client";
 
@@ -41,6 +46,14 @@ declare global {
         text: string;
       }>;
       executeCommand(command: string, ...args: unknown[]): Promise<unknown>;
+      registeredLanguages(): Promise<Array<{
+        id: string;
+        extensions: string[];
+        filenames: string[];
+        filenamePatterns: string[];
+      }>>;
+      openModel(uriPath: string): Promise<{ languageId: string } | null>;
+      listExtensions(): Promise<Array<{ id: string; isActive: boolean }>>;
     };
   }
 }
@@ -76,5 +89,50 @@ declare global {
       executeCommand(command: string, ...args: unknown[]): Promise<unknown>;
     };
     return cmd.executeCommand(command, ...args);
+  },
+  async registeredLanguages() {
+    const api = await import("@codingame/monaco-vscode-api");
+    const langMod = (await import(
+      "@codingame/monaco-vscode-api/vscode/vs/editor/common/languages/language.service"
+    )) as { ILanguageService: unknown };
+    const svc = (await api.getService(langMod.ILanguageService as never)) as {
+      getRegisteredLanguageIds?: () => string[];
+      getExtensions?: (id: string) => string[];
+      getFilenames?: (id: string) => string[];
+    };
+    if (!svc?.getRegisteredLanguageIds) return [];
+    return svc.getRegisteredLanguageIds().map((id) => ({
+      id,
+      extensions: (svc.getExtensions?.(id) ?? []) as string[],
+      filenames: (svc.getFilenames?.(id) ?? []) as string[],
+      filenamePatterns: [] as string[],
+    }));
+  },
+  async listExtensions() {
+    const vsc = await import("vscode");
+    return vsc.extensions.all.map((e) => ({
+      id: e.id,
+      isActive: e.isActive,
+    }));
+  },
+  async openModel(uriPath) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const monacoNs = (window as any).monaco;
+    if (!monacoNs) return null;
+    const uri = monacoNs.Uri.file(uriPath);
+    const api = await import("@codingame/monaco-vscode-api");
+    const cmdMod = (await import(
+      "@codingame/monaco-vscode-api/vscode/vs/platform/commands/common/commands.service"
+    )) as { ICommandService: unknown };
+    const cmd = (await api.getService(cmdMod.ICommandService as never)) as {
+      executeCommand(c: string, ...a: unknown[]): Promise<unknown>;
+    };
+    await cmd.executeCommand("vscode.open", uri);
+    for (let i = 0; i < 20; i++) {
+      const model = monacoNs.editor.getModel(uri);
+      if (model) return { languageId: model.getLanguageId() };
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    return null;
   },
 };

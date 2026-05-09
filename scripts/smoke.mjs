@@ -90,6 +90,47 @@ check(
 await page.locator(".monaco-editor .lines-content").first().click({ force: true });
 await page.waitForTimeout(250);
 
+// Confirm the JSON default extension registered the `json` and `jsonc`
+// languages with the right file associations.
+const langInfo = await page.evaluate(async () => {
+  const all = await window.__dance.registeredLanguages();
+  const summary = (id) => {
+    const l = all.find((x) => x.id === id);
+    return l ? { id: l.id, exts: l.extensions, filenames: l.filenames } : null;
+  };
+  return { json: summary("json"), jsonc: summary("jsonc") };
+});
+check(
+  "JSON language is registered",
+  !!langInfo?.json && (langInfo.json.exts ?? []).some((e) => /\.json$/i.test(e)),
+  JSON.stringify(langInfo?.json),
+);
+check(
+  "JSONC language is registered (with `.jsonc` and friends)",
+  !!langInfo?.jsonc && (langInfo.jsonc.exts ?? []).some((e) => /\.jsonc$|\.babelrc$/i.test(e)),
+  JSON.stringify(langInfo?.jsonc),
+);
+
+// Open the bundled JSONC sample via the workbench and verify the model is
+// classified as `jsonc` (or `json` if the language picker hasn't run yet).
+const jsoncLang = await page.evaluate(async () => {
+  const m = window.monaco;
+  if (!m) return "no-monaco";
+  const uri = m.Uri.file("/workspace/.vscode/settings.json");
+  await window.__dance?.executeCommand("vscode.open", uri);
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    const model = m.editor.getModel(uri);
+    if (model) return model.getLanguageId();
+  }
+  return "no-model";
+});
+check(
+  ".vscode/settings.json opens as jsonc",
+  jsoncLang === "jsonc",
+  `languageId=${jsoncLang}`,
+);
+
 async function readStatus() {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll(".statusbar-item"))
@@ -213,15 +254,34 @@ check(
 );
 
 // Upload a custom keybindings.json that maps `q` → insert and verify the
-// keymap takes effect.
+// keymap takes effect. The upload uses VSCode's JSONC dialect (line
+// comments, trailing commas) to confirm json5/jsonc parsing works.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(120);
-const upload = JSON.stringify([
-  { key: "q", command: "dance.modes.set.insert", when: "editorTextFocus && dance.mode == 'normal'" },
-]);
+const upload = `// custom binding for the smoke test
+[
+  // q in normal mode -> insert
+  {
+    "key": "q",
+    "command": "dance.modes.set.insert",
+    "when": "editorTextFocus && dance.mode == 'normal'",
+  }, /* trailing comma intentional */
+]
+`;
 await page.evaluate(async (json) => {
   await window.__dance?.applyKeybindings(json);
 }, upload);
+
+// Reject malformed JSONC.
+const rejected = await page.evaluate(async () => {
+  try {
+    await window.__dance?.applyKeybindings("[ { \"key\": ");
+    return false;
+  } catch (err) {
+    return /SyntaxError|expected/i.test(String(err));
+  }
+});
+check("malformed JSONC is rejected with a SyntaxError", rejected, String(rejected));
 
 await page.locator(".monaco-editor .lines-content").first().click({ force: true });
 await page.waitForTimeout(150);

@@ -34,7 +34,9 @@ import getMarkersServiceOverride from "@codingame/monaco-vscode-markers-service-
 import getSnippetServiceOverride from "@codingame/monaco-vscode-snippets-service-override";
 import getSecretStorageServiceOverride from "@codingame/monaco-vscode-secret-storage-service-override";
 import getWorkspaceTrustOverride from "@codingame/monaco-vscode-workspace-trust-service-override";
-import "@codingame/monaco-vscode-theme-defaults-default-extension";
+// Built-in extensions are registered eagerly from main.tsx so the
+// extension contributions reach the registry before the workbench scans for
+// them.
 
 import type { IEditorOverrideServices } from "@codingame/monaco-vscode-api";
 

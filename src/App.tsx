@@ -16,7 +16,6 @@ export default function App() {
         gridTemplateRows: "auto auto 1fr",
         background: "#181818",
         color: "#cccccc",
-        fontFamily: "system-ui, sans-serif",
       }}
     >
       <header

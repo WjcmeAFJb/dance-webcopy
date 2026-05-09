@@ -54,6 +54,31 @@ for (let i = 0; i < 10; i++) {
 }
 `;
 
+// VSCode ships a "JSON with comments" (jsonc) language mode: settings.json,
+// keybindings.json, tsconfig.json, .vscode/extensions.json and friends are all
+// jsonc. Including a sample under .vscode/settings.json shows the JSON
+// language server picking it up automatically (associations are part of the
+// language contribution from the JSON default extension).
+const JSONC_SETTINGS_SAMPLE = `// VSCode-style JSON with comments (jsonc).
+// Comments and trailing commas are tolerated by the parser.
+{
+  // The current theme — try changing it through the command palette.
+  "workbench.colorTheme": "Default Dark Modern",
+
+  /*
+   * Block comments work too. The JSON language server still validates the
+   * keys that are not commented out against the workspace settings schema.
+   */
+  "editor.fontSize": 14,
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "selection",
+  "files.autoSave": "off",
+
+  // Trailing commas are allowed in jsonc:
+  "dance.enabled": true,
+}
+`;
+
 export async function registerWorkspace(): Promise<void> {
   // Wires up `vscode-userdata://...` to IndexedDB so user settings,
   // keybindings, and workspace state persist across reloads. Must be done
@@ -66,6 +91,12 @@ export async function registerWorkspace(): Promise<void> {
     new RegisteredMemoryFile(
       monaco.Uri.file(`${WORKSPACE_FOLDER}/sample.js`),
       SECOND_FILE_CONTENT,
+    ),
+  );
+  provider.registerFile(
+    new RegisteredMemoryFile(
+      monaco.Uri.file(`${WORKSPACE_FOLDER}/.vscode/settings.json`),
+      JSONC_SETTINGS_SAMPLE,
     ),
   );
   provider.registerFile(

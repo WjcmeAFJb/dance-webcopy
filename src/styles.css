@@ -8,8 +8,40 @@ body,
   color: #cccccc;
 }
 
-button {
-  font-family: inherit;
+/*
+ * VSCode's stylesheets apply specific fonts to most chrome (status bar,
+ * activity bar, sidebar, editor) but a handful of widgets — quick-pick rows,
+ * tooltips, parts of the workspace-trust banner — fall through to whatever
+ * `font-family` is inherited from <body>. Without this rule the browser
+ * default kicks in (Times New Roman / serif on most platforms), which makes
+ * the workbench look broken. The stack below mirrors the one VSCode
+ * publishes for `--vscode-font-family` on web.
+ */
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI",
+    system-ui, "Ubuntu", "Droid Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/*
+ * Monaco sets its own monospace font on its content; we only set the page
+ * default for plain HTML elements that the workbench doesn't restyle.
+ */
+code,
+pre,
+kbd,
+samp {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 /*
